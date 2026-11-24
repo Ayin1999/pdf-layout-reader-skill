@@ -1,0 +1,51 @@
+{
+  "status": "success",
+  "answers": [
+    {
+      "question": "深层网络的退化问题（degradation problem）在论文中如何描述？",
+      "answer": "论文描述为：随着网络深度增加，准确率先饱和、随后快速下降；且这种退化不是由过拟合引起，给已经合适深度的模型继续叠加层数反而带来更高的训练误差。",
+      "certainty": "reported",
+      "citations": [
+        {
+          "page": 1,
+          "block_id": "b24",
+          "quote": "When deeper networks are able to start converging, a degradation problem has been exposed: with the network depth increasing, accuracy gets saturated"
+        }
+      ]
+    },
+    {
+      "question": "CIFAR-10 上 20 层与 56 层 plain 网络的训练误差对比如何？",
+      "answer": "Figure 1 的题注给出对比：在 CIFAR-10 上，层数更深的 56 层 plain 网络训练误差高于 20 层 plain 网络，因此测试误差也更高；图 4 表明 ImageNet 上存在类似现象。",
+      "certainty": "reported",
+      "citations": [
+        {
+          "page": 1,
+          "block_id": "b21",
+          "quote": "Figure 1. Training error (left) and test error (right) on CIFAR-10 with 20-layer and 56-layer “plain” networks. The deeper network has higher training error, and thus test error."
+        }
+      ]
+    },
+    {
+      "question": "ImageNet 上 34 层与 18 层 plain 网络的验证误差关系？",
+      "answer": "Table 2 显示更深的 34 层 plain 网络验证误差高于更浅的 18 层 plain 网络，作者用 Fig. 4（左）比较两者训练/验证误差曲线以解释该现象。",
+      "certainty": "reported",
+      "citations": [
+        {
+          "page": 4,
+          "block_id": "b186",
+          "quote": "The results in Table 2 show that the deeper 34-layer plain net has higher validation error than the shallower 18-layer plain net."
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {"page": 1, "block_id": "b21", "kind": "figure_caption", "note": "Figure 1 题注，CIFAR-10 训练/测试误差对比"},
+    {"page": 1, "block_id": "b24", "kind": "body", "note": "退化问题的定义段落"},
+    {"page": 4, "block_id": "b186", "kind": "body", "note": "Table 2 与 Fig. 4 的结论段落"}
+  ],
+  "uncertainty": [
+    "Table 1/2 的单元格为栅格排版，pdfplumber 未能逐格还原，相关数值以正文叙述为准，未逐格引用",
+    "第 4 页表格跨页部分未自动合并，续页表头需人工核对"
+  ],
+  "notes": ["解析使用 pymupdf 文本层 + pdfplumber 表格检测；页面预览见 previews/"]
+}

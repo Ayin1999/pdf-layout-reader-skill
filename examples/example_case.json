@@ -1,0 +1,11 @@
+{
+  "case_id": "example-case",
+  "task": "示例任务：读取 paper.pdf 并回答退化问题的表现，给出页码依据。",
+  "materials": [{"name": "paper.pdf", "path": "input/paper.pdf"}],
+  "output_contract": {
+    "full_text": "阅读顺序正文（markdown）",
+    "sections": "章节层级树",
+    "tables": "表格结构与 Markdown",
+    "answers": "逐题回答，含 citations"
+  }
+}
