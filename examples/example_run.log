@@ -1,0 +1,10 @@
+# pdf-layout-reader — 开发期真实运行日志（记录于 2026-11-24，非正式案例结果）
+
+完整日志见仓库 `execution/run.log`；本文件为示例目录内的同一份摘要，便于对照示例输出。
+
+关键数字（公开论文，非评测材料）：
+- ResNet (arXiv:1512.03385v1) 12 页：coverage 0.994 / flow_share 0.966 / tables 11 / blocks 510
+- YOLOv3 (arXiv:1804.02767v1) 6 页：coverage 0.994 / flow_share 0.979 / tables 1
+- Chain-of-Thought (arXiv:2201.11903v6) 前 8 页：coverage 0.993 / flow_share 0.974 / p4 = 3 栏
+
+命令顺序：parse_document.py → evidence_search.py → make_result.py → selfcheck.py（结果 PASS）。

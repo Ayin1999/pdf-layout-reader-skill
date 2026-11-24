@@ -1,0 +1,88 @@
+# pdf-layout-reader — 开发期真实运行日志（记录于 2026-11-24，非正式案例结果）
+
+开发机：Windows 11 / Python 3.13 / PyMuPDF 1.28.6 / pdfplumber 已装。
+评测容器内的依赖由平台镜像提供（pdf-text-tool / pdf-render-tool / ocr-tool），脚本对缺失的 pdfplumber、OCR 均做了降级。
+
+样本（公开发表论文，仅用于版式回归，不属于评测材料）：
+- A = ResNet (arXiv:1512.03385v1)，双栏 CVPR 版式，12 页，含图、表、参考文献
+- B = YOLOv3 (arXiv:1804.02767v1)，双栏技术报告，6 页，首页为矢量图表
+- C = Chain-of-Thought (arXiv:2201.11903v6)，单栏长文，取前 8 页，第 4 页含 3 栏表格区
+
+---
+
+## 1) 双栏样本 A（前 6 页）
+
+```
+$ python scripts/parse_document.py --pdf A.pdf --out rA6 --page-limit 6
+{"pdf": "A.pdf", "pages": 6, "coverage": 0.993,
+ "warnings": ["multi-column layout detected: verify reading order against previews"]}
+flow_share = 0.936   tables = 2（9×5 与 3×4）
+column_models: p1/p2/p3/p6 = 2 栏（栏缝 297.63pt）；p4/p5 = 1 栏（表格页退化为单栏，按 y 排序）
+```
+页 1 阅读顺序核对（对照 `previews/page-1.png`）：title → authors → Abstract → 摘要正文 → 左栏正文 → Figure 1 题注 → 右栏正文续接，未出现栏间串行。
+
+## 2) 双栏样本 A（全 12 页）
+
+```
+$ python scripts/parse_document.py --input input --out output
+{"pdf": "input/paper.pdf", "pages": 12, "coverage": 0.994,
+ "warnings": ["multi-column layout detected: verify reading order against previews"]}
+flow_share = 0.966   tables = 11   blocks = 510   页面预览 = 12 张
+```
+差额（1−flow_share ≈ 3.4%）来自页眉/页脚页码、图内坐标轴刻度与图例标签、表格单元格文本；这些块仍保留在 `blocks.jsonl` 中，可定位、可引用，只是不进入正文流。
+
+## 3) 双栏样本 B（首页矢量图表）
+
+```
+$ python scripts/parse_document.py --pdf B.pdf --out rB
+{"pdf": "B.pdf", "pages": 6, "coverage": 0.994,
+ "warnings": ["multi-column layout detected: verify reading order against previews"]}
+flow_share = 0.979   tables = 1（6×10）
+```
+页 1 顺序：title → authors → Abstract → Introduction → 2. The Deal → 右栏（Figure 1 图区标签 → 题注 → 2.1 正文）；
+图区文字（YOLOv3 / 38 / 36 / 34 / RetinaNet-50 …）标为 `figure_label`，`Figure 1.` 题注标为 `caption`。
+
+## 4) 单栏长文样本 C（前 8 页）
+
+```
+$ python scripts/parse_document.py --pdf C.pdf --out rC --page-limit 8
+{"pdf": "C.pdf", "pages": 8, "coverage": 0.993,
+ "warnings": ["multi-column layout detected: verify reading order against previews"]}
+flow_share = 0.974   tables = 2（5×2）
+column_models: p1/p2/p3/p5/p7/p8 = 1 栏；p4 = 3 栏（栏缝 241.49 / 372.24）；p6 = 2 栏
+```
+单栏页未串行；p4 的多栏区域确为排版事实，因此保留多栏顺序。
+
+## 5) 表格抽取
+
+- 单列条带（`n_cols < 2`）判为排版伪影，直接丢弃；
+- 同一可视表格被 pdfplumber 重复框出（bbox IoU > 0.8）时去重，保留面积最大者；
+- 单元格文本同时以 `table_text` 角色从正文流排除，表格另出 Markdown 附录（`structure/tables/page-XX-table-YY.md`）。
+
+## 6) 证据检索 → 结果组装 → 自检（样本 A 全 12 页）
+
+```
+$ python scripts/evidence_search.py --blocks output/structure/blocks.jsonl \
+      --query "degradation problem deeper networks training error" --top 4
+命中：b21 (p1, caption, score 11.38)  Figure 1 题注
+      b186(p4, body,    score 11.04)  Table 2 结论段
+      b24 (p1, body)                  退化问题定义段
+
+$ python scripts/make_result.py --case case.json --structure output/structure \
+      --answers work/answers.json --out output/result.json
+{"written": "output/result.json", "case_id": "dev-example-01", "status": "success",
+ "fields": 4, "missing": []}
+
+$ python scripts/selfcheck.py --result output/result.json --structure output/structure
+PASS
+```
+自检覆盖：契约字段非空、`case_id` 一致；3 条 evidence 的页码 ≤ 12 且 block_id 存在于 blocks.jsonl；引句为对应区块的逐字子串；`document.md` 的 `<sup>/<sub>` 标签闭合；`previews/` 12 张预览存在；`coverage ≥ 0.97`。
+
+---
+
+## 已知未覆盖 / 未验证项（如实记录）
+
+- 跨页表格不自动合并：样本 A 的 Table 3/4 续页以独立表格对象输出，答案中注明需人工核对续页表头。
+- 公式仅字符保真（上下标用 MuPDF flag + 基线偏移判定），未做 LaTeX 语义还原。
+- OCR 路径**未在本机实跑**（无 tesseract 二进制），代码存在但未经端到端验证；对无文字层页面仅输出 "unreadable" 标记，不编造内容。
+- 旋转文字（页边竖排）不进入正文流；章节层级由字号/编号推断，未编号小标题可能并入父级。
